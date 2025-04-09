@@ -5,12 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>物业管理系统</title>
     
-    <!-- 国内CDN加速 -->
     <script src="https://cdn.bootcdn.net/ajax/libs/vue/3.2.36/vue.global.prod.min.js"></script>
     <script src="https://cdn.bootcdn.net/ajax/libs/element-plus/2.3.3/index.full.min.js"></script>
     <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/element-plus/2.3.3/index.min.css">
     
-    <!-- 本地备用资源（放在项目js/目录） -->
     <script>
     if(!window.Vue) {
         document.write('<script src="./js/vue.global.prod.min.js"><\/script>');
@@ -36,11 +34,18 @@
         text-align: center;
         font-size: 12px;
     }
+
+    /* 精确到任期列的样式 */
+    .el-table .term-cell.warning-cell .cell {
+        background-color: #fff3cd !important;
+    }
+    .el-table .term-cell.critical-cell .cell {
+        background-color: #ffcccc !important;
+    }
     </style>
 </head>
 <body>
     <div id="app">
-        <!-- 搜索和统计区域 -->
         <div class="toolbar">
             <el-input 
                 v-model="searchText" 
@@ -53,7 +58,6 @@
             <el-tag type="warning" v-if="errorCount > 0">异常数据：{{ errorCount }} 条</el-tag>
         </div>
 
-        <!-- 数据表格 -->
         <el-table 
             :data="paginatedData" 
             border 
@@ -68,6 +72,8 @@
                 :label="col.label"
                 :width="col.width"
                 :sortable="col.sortable"
+                :class-name="col.className"
+                :cell-class-name="col.cellClassName"
             >
                 <template #default="{ row }">
                     <span :class="{ 'error-badge': row[col.prop + '_error'] }">
@@ -77,7 +83,6 @@
             </el-table-column>
         </el-table>
 
-        <!-- 分页控件 -->
         <el-pagination
             v-model:current-page="currentPage"
             :page-sizes="[10, 20, 50]"
@@ -89,7 +94,6 @@
             style="margin-top: 20px;"
         ></el-pagination>
 
-        <!-- 错误提示 -->
         <el-dialog 
             title="数据异常详情" 
             v-model="errorDialogVisible"
@@ -107,28 +111,19 @@
     const App = {
         data() {
             return {
-                rawData: [],       // 原始数据
-                processedData: [], // 处理后的数据
-                searchText: '',    // 搜索关键词
-                currentPage: 1,    // 当前页码
-                pageSize: 10,      // 每页条数
-                errorCount: 0,     // 错误总数
-                errorData: [],     // 错误详情
-                loading: true,     // 加载状态
+                rawData: [],
+                processedData: [],
+                searchText: '',
+                currentPage: 1,
+                pageSize: 10,
+                errorCount: 0,
+                errorData: [],
+                loading: true,
                 errorDialogVisible: false,
-                
-                // 表格列配置
-                tableColumns: [
-                    { prop: 'project_name', label: '项目名称', width: 250, sortable: true },
-                    { prop: 'term', label: '任期时间', width: 200 },
-                    { prop: 'property_company', label: '物业公司', width: 180 },
-                    { prop: 'contact', label: '联系方式' },
-                    { prop: 'total_area', label: '建筑面积(㎡)', width: 130, sortable: true }
-                ]
+                tableColumns: []
             }
         },
         computed: {
-            // 过滤后的数据
             filteredData() {
                 const search = this.searchText.toLowerCase();
                 return this.processedData.filter(item => {
@@ -137,18 +132,45 @@
                     );
                 });
             },
-            // 分页数据
             paginatedData() {
                 const start = (this.currentPage - 1) * this.pageSize;
                 return this.filteredData.slice(start, start + this.pageSize);
             },
-            // 总条目数
             totalItems() {
                 return this.filteredData.length;
             }
         },
         methods: {
-            // 日期格式化（增强版）
+            initTableColumns() {
+                this.tableColumns = [
+                    { 
+                        prop: 'project_name', 
+                        label: '项目名称', 
+                        width: 250, 
+                        sortable: true 
+                    },
+                    { 
+                        prop: 'term',
+                        label: '任期时间',
+                        width: 200,
+                        className: 'term-cell',  // 固定类名
+                        cellClassName: this.getTermClass
+                    },
+                    { 
+                        prop: 'property_company', 
+                        label: '物业公司', 
+                        width: 180 
+                    },
+                    { prop: 'contact', label: '联系方式' },
+                    { 
+                        prop: 'total_area', 
+                        label: '建筑面积(㎡)', 
+                        width: 130, 
+                        sortable: true 
+                    }
+                ];
+            },
+
             formatDate(raw) {
                 try {
                     if (!raw) throw new Error('空值');
@@ -167,13 +189,25 @@
                         throw new Error('无效日期');
                     }
 
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    const diffTime = endDate - today;
+                    const remainingDays = Math.floor(diffTime / 86400000);
+
+                    if (remainingDays < 0) {
+                        throw new Error('任期已结束');
+                    }
+
                     const format = date => `
                         ${date.getFullYear()}.
                         ${String(date.getMonth() + 1).padStart(2, '0')}.
                         ${String(date.getDate()).padStart(2, '0')}
                     `.replace(/\s+/g, '');
 
-                    return `${format(startDate)} 至 ${format(endDate)}`;
+                    return {
+                        formatted: `${format(startDate)} 至 ${format(endDate)}`,
+                        remainingDays: remainingDays
+                    };
                 } catch (error) {
                     this.errorCount++;
                     this.errorData.push({
@@ -181,10 +215,34 @@
                         field: '本届业委会任期起止时间',
                         message: `原始值："${raw}"，错误：${error.message}`
                     });
-                    return '日期格式异常';
+                    return { formatted: '日期格式异常', remainingDays: null };
                 }
             },
-            // 初始化加载数据
+
+            getTermClass({ row }) {
+                if (row.remainingDays === null) return '';
+                if (row.remainingDays <= 90) return 'critical-cell';
+                if (row.remainingDays <= 365) return 'warning-cell';
+                return '';
+            },
+
+            showTermAlert() {
+                const criticalItems = this.processedData
+                    .filter(item => item.remainingDays > 0 && item.remainingDays <= 365)
+                    .map(item => `${item.project_name}（剩余${item.remainingDays}天）`);
+
+                if (criticalItems.length > 0) {
+                    this.$alert(
+                        `以下项目需要关注：\n${criticalItems.join('\n')}`,
+                        '任期提醒', 
+                        { 
+                            type: 'warning', 
+                            confirmButtonText: '知道了'
+                        }
+                    );
+                }
+            },
+
             async loadData() {
                 try {
                     const response = await fetch('data.json');
@@ -194,10 +252,12 @@
                     this.rawData = Array.isArray(raw) ? raw : [raw];
                     
                     this.processedData = this.rawData.map(item => {
-                        this.currentItem = item; // 用于错误追踪
+                        this.currentItem = item;
+                        const termResult = this.formatDate(item['本届业委会任期起止时间']);
                         return {
                             project_name: item['项目名称'] || '未命名项目',
-                            term: this.formatDate(item['本届业委会任期起止时间']),
+                            term: termResult.formatted,
+                            remainingDays: termResult.remainingDays,
                             property_company: item['物业企业名称'] || '暂无信息',
                             contact: item['负责人手机'] 
                                 ? `${item['项目负责人']} (${item['负责人手机']})`
@@ -212,9 +272,10 @@
                 } finally {
                     this.loading = false;
                     this.currentItem = null;
+                    this.$nextTick(() => this.showTermAlert());
                 }
             },
-            // 分页事件处理
+
             handleSizeChange(size) {
                 this.pageSize = size;
                 this.currentPage = 1;
@@ -222,6 +283,9 @@
             handleCurrentChange(page) {
                 this.currentPage = page;
             }
+        },
+        created() {
+            this.initTableColumns();
         },
         mounted() {
             this.loadData();
