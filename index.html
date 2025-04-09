@@ -5,10 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>物业管理系统</title>
     
+    <!-- 依赖库 -->
     <script src="https://cdn.bootcdn.net/ajax/libs/vue/3.2.36/vue.global.prod.min.js"></script>
     <script src="https://cdn.bootcdn.net/ajax/libs/element-plus/2.3.3/index.full.min.js"></script>
     <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/element-plus/2.3.3/index.min.css">
-    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+    <!-- 备用本地资源 -->
     <script>
     if(!window.Vue) {
         document.write('<script src="./js/vue.global.prod.min.js"><\/script>');
@@ -18,67 +21,217 @@
     </script>
 
     <style>
+    :root {
+        --primary: #409EFF;
+        --warning: #E6A23C;
+        --danger: #F56C6C;
+        --success: #67C23A;
+    }
+
+    body {
+        font-family: 'Helvetica Neue', Helvetica, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+        background: #f0f2f5;
+        margin: 0;
+        padding: 20px;
+    }
+
+    #app {
+        max-width: 1600px;
+        margin: 20px auto;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+        padding: 24px;
+    }
+
+    .toolbar {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+    }
+
+    .el-tag {
+        font-weight: 500;
+        padding: 0 12px;
+        height: 32px;
+        line-height: 30px;
+    }
+
+    .el-table {
+        border-radius: 8px;
+        border: 1px solid #EBEEF5;
+    }
+
+    .el-table th {
+        background: #f8f9fa !important;
+        font-weight: 600;
+        color: #606266;
+    }
+
+    .el-table__row:hover td {
+        background: #f5f7fa !important;
+    }
+
     .error-badge {
         position: relative;
+        padding-right: 20px;
     }
     .error-badge::after {
         content: "!";
         position: absolute;
         top: -8px;
-        right: -8px;
-        background: red;
+        right: 0;
+        background: var(--danger);
         color: white;
         width: 18px;
         height: 18px;
         border-radius: 50%;
         text-align: center;
         font-size: 12px;
+        line-height: 18px;
+        font-weight: bold;
     }
 
-    /* 精确到任期列的样式 */
-    .el-table .term-cell.warning-cell .cell {
-        background-color: #fff3cd !important;
+    .term-status {
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 12px;
     }
-    .el-table .term-cell.critical-cell .cell {
-        background-color: #ffcccc !important;
+    .term-normal {
+        background: #f0f9eb;
+        color: var(--success);
+    }
+    .term-warning {
+        background: #fdf6ec;
+        color: var(--warning);
+    }
+    .term-critical {
+        background: #fef0f0;
+        color: var(--danger);
+    }
+
+    .star-rating {
+        color: var(--warning);
+    }
+    .star-rating i {
+        margin-right: 2px;
+    }
+
+    .status-tag {
+        min-width: 60px;
+        text-align: center;
+        font-weight: 500;
+    }
+
+    .number-cell {
+        font-family: 'Roboto Mono', monospace;
+        text-align: right;
+    }
+
+    .mobile-hidden {
+        display: table-cell;
+    }
+    @media (max-width: 768px) {
+        .mobile-hidden {
+            display: none;
+        }
+        .el-table td,
+        .el-table th {
+            padding: 8px 0;
+        }
+    }
+
+    .el-dialog__body {
+        max-height: 60vh;
+        overflow-y: auto;
     }
     </style>
 </head>
 <body>
     <div id="app">
         <div class="toolbar">
-            <el-input 
-                v-model="searchText" 
-                placeholder="输入项目名称/物业公司搜索"
+            <el-input
+                v-model="searchText"
+                placeholder="输入任意字段搜索"
                 clearable
-                style="width: 300px; margin-right: 20px;"
-            ></el-input>
+                style="width: 300px;"
+                @keyup.enter="handleSearch"
+            >
+                <template #prefix>
+                    <i class="el-icon-search"></i>
+                </template>
+            </el-input>
             
-            <el-tag type="info">总项目数：{{ totalItems }}</el-tag>
-            <el-tag type="warning" v-if="errorCount > 0">异常数据：{{ errorCount }} 条</el-tag>
+            <el-tag type="info" effect="dark">总项目数：{{ totalItems }}</el-tag>
+            <el-tag 
+                type="danger" 
+                effect="dark" 
+                v-if="errorCount > 0" 
+                @click="errorDialogVisible = true"
+                style="cursor: pointer"
+            >
+                异常数据：{{ errorCount }} 条 <i class="el-icon-warning-outline"></i>
+            </el-tag>
         </div>
 
-        <el-table 
-            :data="paginatedData" 
-            border 
+        <el-table
+            :data="paginatedData"
+            border
             stripe
             v-loading="loading"
-            style="margin-top: 20px;"
+            height="calc(100vh - 200px)"
+            highlight-current-row
         >
             <el-table-column 
-                v-for="col in tableColumns" 
+                v-for="col in tableColumns"
                 :key="col.prop"
-                :prop="col.prop" 
+                :prop="col.prop"
                 :label="col.label"
                 :width="col.width"
                 :sortable="col.sortable"
                 :class-name="col.className"
-                :cell-class-name="col.cellClassName"
+                :formatter="col.formatter"
             >
-                <template #default="{ row }">
-                    <span :class="{ 'error-badge': row[col.prop + '_error'] }">
-                        {{ row[col.prop] || '暂无数据' }}
-                    </span>
+                <template #default="{ row, column }">
+                    <template v-if="column.property === '星级'">
+                        <div class="star-rating">
+                            <i 
+                                v-for="n in 5" 
+                                :key="n" 
+                                :class="n <= row.星级.length ? 'fas fa-star' : 'far fa-star'"
+                            ></i>
+                        </div>
+                    </template>
+                    
+                    <template v-else-if="column.property === 'term'">
+                        <div :class="`term-status ${getTermClass(row)}`">
+                            {{ row.remainingDays !== null ? `剩余${row.remainingDays}天` : '异常' }}
+                        </div>
+                        <div style="margin-top: 4px">{{ row.term }}</div>
+                    </template>
+
+                    <template v-else-if="column.property === '是否设立' || column.property === '是否在有效期内'">
+                        <el-tag 
+                            :type="row[column.property] === '是' ? 'success' : 'danger'" 
+                            class="status-tag"
+                        >
+                            {{ row[column.property] || '否' }}
+                        </el-tag>
+                    </template>
+
+                    <template v-else-if="typeof row[column.property] === 'number'">
+                        <span class="number-cell">
+                            {{ row[column.property].toLocaleString() }}
+                        </span>
+                    </template>
+
+                    <template v-else>
+                        <span :class="{ 'error-badge': row[column.property + '_error'] }">
+                            {{ row[column.property] || '—' }}
+                        </span>
+                    </template>
                 </template>
             </el-table-column>
         </el-table>
@@ -94,15 +247,15 @@
             style="margin-top: 20px;"
         ></el-pagination>
 
-        <el-dialog 
-            title="数据异常详情" 
+        <el-dialog
+            title="数据异常详情"
             v-model="errorDialogVisible"
             width="70%"
         >
-            <el-table :data="errorData">
-                <el-table-column prop="project" label="项目名称"></el-table-column>
+            <el-table :data="errorData" border>
+                <el-table-column prop="project" label="项目名称" width="200"></el-table-column>
                 <el-table-column prop="field" label="问题字段"></el-table-column>
-                <el-table-column prop="message" label="错误描述"></el-table-column>
+                <el-table-column prop="message" label="错误描述" width="400"></el-table-column>
             </el-table>
         </el-dialog>
     </div>
@@ -120,15 +273,30 @@
                 errorData: [],
                 loading: true,
                 errorDialogVisible: false,
-                tableColumns: []
+                tableColumns: [
+                    { prop: '序号', label: 'ID', width: 80, sortable: true },
+                    { prop: '星级', label: '星级', width: 130 },
+                    { prop: '项目名称', label: '项目名称', width: 250, sortable: true },
+                    { prop: 'term', label: '业委会任期', width: 220 },
+                    { prop: '详细地址', label: '地址', width: 220 },
+                    { prop: '项目性质', label: '类型', width: 120 },
+                    { prop: '总建筑面积（㎡）', label: '建筑面积', width: 130, sortable: true },
+                    { prop: '总户数', label: '户数', width: 100 },
+                    { prop: '物业企业名称', label: '物业公司', width: 180 },
+                    { prop: 'contact', label: '负责人', width: 180 },
+                    { prop: '是否设立', label: '业委会', width: 100 },
+                    { prop: '是否在有效期内', label: '有效期', width: 100 },
+                    { prop: '业委会届数', label: '届数', width: 100 },
+                    { prop: '小区房屋是否归集维修资金', label: '维修资金', width: 120 }
+                ]
             }
         },
         computed: {
             filteredData() {
                 const search = this.searchText.toLowerCase();
                 return this.processedData.filter(item => {
-                    return ['project_name', 'property_company'].some(field => 
-                        String(item[field]).toLowerCase().includes(search)
+                    return Object.keys(item).some(key => 
+                        String(item[key]).toLowerCase().includes(search)
                     );
                 });
             },
@@ -141,52 +309,29 @@
             }
         },
         methods: {
-            initTableColumns() {
-                this.tableColumns = [
-                    { 
-                        prop: 'project_name', 
-                        label: '项目名称', 
-                        width: 250, 
-                        sortable: true 
-                    },
-                    { 
-                        prop: 'term',
-                        label: '任期时间',
-                        width: 200,
-                        className: 'term-cell',  // 固定类名
-                        cellClassName: this.getTermClass
-                    },
-                    { 
-                        prop: 'property_company', 
-                        label: '物业公司', 
-                        width: 180 
-                    },
-                    { prop: 'contact', label: '联系方式' },
-                    { 
-                        prop: 'total_area', 
-                        label: '建筑面积(㎡)', 
-                        width: 130, 
-                        sortable: true 
-                    }
-                ];
+            getTermClass(row) {
+                if (row.remainingDays === null) return 'term-critical';
+                if (row.remainingDays <= 90) return 'term-critical';
+                if (row.remainingDays <= 365) return 'term-warning';
+                return 'term-normal';
             },
 
             formatDate(raw) {
                 try {
-                    if (!raw) throw new Error('空值');
+                    if (!raw || raw === '无业委会') return { formatted: '—', remainingDays: null };
                     
                     const [startPart, endPart] = raw.split(/[-—至]/).map(s => s.trim());
-                    const parse = (str) => {
+                    const parseDate = (str) => {
                         const cleaned = str.replace(/[年月]/g, '.').replace(/[^\d.]/g, '');
                         const [y, m, d] = cleaned.split('.').map(Number);
                         return new Date(y, m - 1, d || 1);
                     };
 
-                    const startDate = parse(startPart);
-                    const endDate = parse(endPart);
+                    const startDate = parseDate(startPart);
+                    const endDate = parseDate(endPart);
                     
                     if (isNaN(startDate) || isNaN(endDate)) {
-                        throw new Error('无效日期');
+                        throw new Error('日期格式错误');
                     }
 
                     const today = new Date();
@@ -198,12 +343,7 @@
                         throw new Error('任期已结束');
                     }
 
-                    const format = date => `
-                        ${date.getFullYear()}.
-                        ${String(date.getMonth() + 1).padStart(2, '0')}.
-                        ${String(date.getDate()).padStart(2, '0')}
-                    `.replace(/\s+/g, '');
-
+                    const format = date => date.toISOString().split('T')[0].replace(/-/g, '.');
                     return {
                         formatted: `${format(startDate)} 至 ${format(endDate)}`,
                         remainingDays: remainingDays
@@ -211,68 +351,42 @@
                 } catch (error) {
                     this.errorCount++;
                     this.errorData.push({
-                        project: this.currentItem?.project_name || '未知项目',
+                        project: this.currentItem?.项目名称 || '未知项目',
                         field: '本届业委会任期起止时间',
                         message: `原始值："${raw}"，错误：${error.message}`
                     });
-                    return { formatted: '日期格式异常', remainingDays: null };
-                }
-            },
-
-            getTermClass({ row }) {
-                if (row.remainingDays === null) return '';
-                if (row.remainingDays <= 90) return 'critical-cell';
-                if (row.remainingDays <= 365) return 'warning-cell';
-                return '';
-            },
-
-            showTermAlert() {
-                const criticalItems = this.processedData
-                    .filter(item => item.remainingDays > 0 && item.remainingDays <= 365)
-                    .map(item => `${item.project_name}（剩余${item.remainingDays}天）`);
-
-                if (criticalItems.length > 0) {
-                    this.$alert(
-                        `以下项目需要关注：\n${criticalItems.join('\n')}`,
-                        '任期提醒', 
-                        { 
-                            type: 'warning', 
-                            confirmButtonText: '知道了'
-                        }
-                    );
+                    return { formatted: '日期异常', remainingDays: null };
                 }
             },
 
             async loadData() {
                 try {
                     const response = await fetch('data.json');
-                    if (!response.ok) throw new Error(`HTTP错误 ${response.status}`);
+                    if (!response.ok) throw new Error(`加载失败: ${response.status}`);
                     
-                    const raw = await response.json();
-                    this.rawData = Array.isArray(raw) ? raw : [raw];
+                    this.rawData = await response.json();
                     
                     this.processedData = this.rawData.map(item => {
                         this.currentItem = item;
                         const termResult = this.formatDate(item['本届业委会任期起止时间']);
+                        
                         return {
-                            project_name: item['项目名称'] || '未命名项目',
+                            ...item,
                             term: termResult.formatted,
                             remainingDays: termResult.remainingDays,
-                            property_company: item['物业企业名称'] || '暂无信息',
-                            contact: item['负责人手机'] 
-                                ? `${item['项目负责人']} (${item['负责人手机']})`
-                                : '暂无联系方式',
-                            total_area: item['总建筑面积（㎡）'] 
-                                ? Number(item['总建筑面积（㎡）']).toLocaleString()
-                                : '—'
+                            contact: item.负责人手机 
+                                ? `${item.项目负责人}\n${item.负责人手机}` 
+                                : item.项目负责人 || '—',
+                            '总建筑面积（㎡）': Number(item['总建筑面积（㎡）']) || 0,
+                            '总户数': Number(item.总户数) || 0,
+                            '业委会届数': Number(item.业委会届数) || 0
                         };
                     });
                 } catch (error) {
-                    this.$message.error(`数据加载失败：${error.message}`);
+                    this.$message.error(`数据加载失败: ${error.message}`);
                 } finally {
                     this.loading = false;
                     this.currentItem = null;
-                    this.$nextTick(() => this.showTermAlert());
                 }
             },
 
@@ -283,9 +397,6 @@
             handleCurrentChange(page) {
                 this.currentPage = page;
             }
-        },
-        created() {
-            this.initTableColumns();
         },
         mounted() {
             this.loadData();
