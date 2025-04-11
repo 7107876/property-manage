@@ -366,6 +366,7 @@
                     
                     this.rawData = await response.json();
                     
+                    // 先完成所有数据处理
                     this.processedData = this.rawData.map(item => {
                         this.currentItem = item;
                         const termResult = this.formatDate(item['本届业委会任期起止时间']);
@@ -382,6 +383,29 @@
                             '业委会届数': Number(item.业委会届数) || 0
                         };
                     });
+                    
+                    // 在数据处理完成后执行预警检查
+                    const warningItems = this.processedData.filter(item => 
+                        item.remainingDays !== null && item.remainingDays < 365
+                    );
+                    
+                    if (warningItems.length > 0) {
+                        this.$notify({
+                            title: '任期预警',
+                            type: 'warning',
+                            dangerouslyUseHTMLString: true,
+                            message: `发现<b>${warningItems.length}</b>个项目任期剩余不足1年：
+                                <ul style="margin:5px 0">
+                                    ${warningItems.slice(0,5).map(i => 
+                                        `<li>${i.项目名称}（剩余${i.remainingDays}天）</li>`
+                                    ).join('')}
+                                </ul>
+                                ${warningItems.length > 5 ? '等更多...' : ''}`,
+                            duration: 0,
+                            position: 'bottom-right'
+                        });
+                    }
+                    
                 } catch (error) {
                     this.$message.error(`数据加载失败: ${error.message}`);
                 } finally {
