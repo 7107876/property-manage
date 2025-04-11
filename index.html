@@ -204,66 +204,48 @@
             </el-tag>
         </div>
 
-        <el-table
-            :data="paginatedData"
-            border
-            stripe
-            v-loading="loading"
-            height="calc(100vh - 200px)"
-            highlight-current-row
-        >
-            <el-table-column 
-                v-for="col in tableColumns"
-                :key="col.prop"
-                :prop="col.prop"
-                :label="col.label"
-                :width="col.width"
-                :sortable="col.sortable"
-                :class-name="col.className"
-                :formatter="col.formatter"
+        <!-- 替换原有的el-table为卡片式布局 -->
+        <el-row :gutter="20" class="card-container">
+            <el-col 
+                v-for="(item, index) in paginatedData" 
+                :key="index" 
+                :xs="24" 
+                :sm="12" 
+                :md="8" 
+                :lg="6"
+                class="card-col"
             >
-                <template #default="{ row, column }">
-                    <template v-if="column.property === '星级'">
-                        <div class="star-rating">
-                            <i 
-                                v-for="n in 5" 
-                                :key="n" 
-                                :class="n <= row.星级.length ? 'fas fa-star' : 'far fa-star'"
-                            ></i>
-                        </div>
-                    </template>
-                    
-                    <template v-else-if="column.property === 'term'">
-                        <div :class="`term-status ${getTermClass(row)}`">
-                            {{ row.remainingDays !== null ? `剩余${row.remainingDays}天` : '无' }}
-                        </div>
-                        <div style="margin-top: 4px">{{ row.term }}</div>
-                    </template>
-
-                    <template v-else-if="column.property === '是否设立' || column.property === '是否在有效期内'">
-                        <el-tag 
-                            :type="row[column.property] === '是' ? 'success' : 'danger'" 
-                            class="status-tag"
-                        >
-                            {{ row[column.property] || '否' }}
+                <el-card 
+                    class="property-card" 
+                    :class="{ 'expanded': item.isExpanded }"
+                    @click="toggleExpand(item)"
+                >
+                    <div class="card-header">
+                        <h3 class="title">{{ item.项目名称 }}</h3>
+                        <el-tag :type="getTermClass(item).replace('term-', '')">
+                            {{ item.remainingDays !== null ? `剩余${item.remainingDays}天` : '无' }}
                         </el-tag>
-                    </template>
+                    </div>
 
-                    <template v-else-if="typeof row[column.property] === 'number'">
-                        <span class="number-cell">
-                            {{ row[column.property].toLocaleString() }}
-                        </span>
-                    </template>
+                    <div class="card-content">
+                        <div class="info-item" v-for="col in mainColumns" :key="col.prop">
+                            <label>{{ col.label }}：</label>
+                            <span v-html="formatCardValue(col, item)"></span>
+                        </div>
+                    </div>
 
-                    <template v-else>
-                        <span :class="{ 'error-badge': row[column.property + '_error'] }">
-                            {{ row[column.property] || '—' }}
-                        </span>
-                    </template>
-                </template>
-            </el-table-column>
-        </el-table>
+                    <!-- 展开后的详细信息 -->
+                    <div class="expanded-details" v-if="item.isExpanded">
+                        <div class="detail-section" v-for="col in detailColumns" :key="col.prop">
+                            <h4>{{ col.label }}</h4>
+                            <div v-html="formatCardValue(col, item)"></div>
+                        </div>
+                    </div>
+                </el-card>
+            </el-col>
+        </el-row>
 
+        <!-- 保留原有分页代码 -->
         <el-pagination
             v-model:current-page="currentPage"
             :page-sizes="[10, 20, 50]"
@@ -292,6 +274,21 @@
     const App = {
         data() {
             return {
+                // 新增卡片列定义
+                mainColumns: [
+                    { prop: '星级', label: '星级' },
+                    { prop: '物业企业名称', label: '物业公司' },
+                    { prop: 'contact', label: '负责人' },
+                    { prop: '总建筑面积（㎡）', label: '建筑面积' },
+                ],
+                detailColumns: [
+                    { prop: '详细地址', label: '详细地址' },
+                    { prop: '项目性质', label: '项目类型' },
+                    { prop: '总户数', label: '总户数' },
+                    { prop: '是否设立', label: '业委会状态' },
+                    { prop: '业委会届数', label: '当前届数' },
+                    { prop: '小区房屋是否归集维修资金', label: '维修资金' }
+                ],
                 rawData: [],
                 processedData: [],
                 searchText: '',
@@ -387,6 +384,25 @@
                 }
             },
 
+            // 新增切换方法
+            toggleExpand(item) {
+                item.isExpanded = !item.isExpanded;
+                this.$forceUpdate(); // 确保视图更新
+            },
+            
+            formatCardValue(col, item) {
+                if (col.prop === '星级') {
+                    // 修复星级显示逻辑
+                    return Array.from({length: 5}, (_, n) => 
+                        `<i class="${n < item.星级 ? 'fas fa-star' : 'far fa-star'}"></i>`
+                    ).join('');
+                }
+                if (typeof item[col.prop] === 'number') {
+                    return item[col.prop].toLocaleString();
+                }
+                return item[col.prop] || '—';
+            },
+
             async loadData() {
                 try {
                     const response = await fetch('data.json');
@@ -394,13 +410,14 @@
                     
                     this.rawData = await response.json();
                     
-                    // 先完成所有数据处理
+                    // 添加isExpanded字段
                     this.processedData = this.rawData.map(item => {
                         this.currentItem = item;
                         const termResult = this.formatDate(item['本届业委会任期起止时间']);
                         
                         return {
                             ...item,
+                            isExpanded: false, // 初始化展开状态
                             term: termResult.formatted,
                             remainingDays: termResult.remainingDays,
                             contact: item.负责人手机 
@@ -484,3 +501,47 @@
 
 <!-- 添加权限策略 -->
 <meta http-equiv="Permissions-Policy" content="accelerometer=()">
+
+
+
+<style>
+.card-container {
+    margin-bottom: 20px;
+}
+.card-col {
+    margin-bottom: 20px;
+}
+.property-card {
+    cursor: pointer;
+    transition: all 0.3s;
+    min-height: 200px;
+}
+.property-card.expanded {
+    position: relative;
+    z-index: 2;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+}
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+.card-content .info-item {
+    margin: 8px 0;
+    display: flex;
+    justify-content: space-between;
+}
+.expanded-details {
+    margin-top: 20px;
+    border-top: 1px solid #eee;
+    padding-top: 15px;
+}
+.detail-section {
+    margin: 12px 0;
+}
+.detail-section h4 {
+    color: var(--primary);
+    margin-bottom: 8px;
+}
+</style>
