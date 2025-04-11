@@ -54,22 +54,29 @@
         --warning: #E6A23C;
         --danger: #F56C6C;
         --success: #67C23A;
+        --text-primary: #303133;
+        --text-regular: #606266;
+        --text-secondary: #909399;
+        --border-color: #DCDFE6;
+        --bg-color: #f5f7fa;
     }
 
     body {
         font-family: 'Helvetica Neue', Helvetica, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
-        background: #f0f2f5;
+        background: var(--bg-color);
         margin: 0;
-        padding: 20px;
+        color: var(--text-primary);
+        line-height: 1.6;
     }
 
     #app {
         max-width: 1600px;
         margin: 20px auto;
         background: white;
-        border-radius: 12px;
-        box-shadow: 0 2px 12px rgba(0,0,0,0.1);
-        padding: 24px;
+        border-radius: 16px;
+        box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+        padding: 32px;
+        transition: all 0.3s ease;
     }
 
     .toolbar {
@@ -510,38 +517,124 @@
 }
 .card-col {
     margin-bottom: 20px;
+    transition: transform 0.3s;
+}
+.card-col:hover {
+    transform: translateY(-5px);
 }
 .property-card {
     cursor: pointer;
-    transition: all 0.3s;
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
     min-height: 200px;
+    border-radius: 12px;
+    border: 1px solid rgba(0,0,0,0.05);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+.property-card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
 }
 .property-card.expanded {
     position: relative;
     z-index: 2;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    transform: scale(1.02);
 }
 .card-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 12px;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px dashed var(--border-color);
+}
+.card-header .title {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--primary);
 }
 .card-content .info-item {
-    margin: 8px 0;
+    margin: 12px 0;
     display: flex;
     justify-content: space-between;
 }
+.card-content .info-item label {
+    color: var(--text-secondary);
+    font-size: 14px;
+}
+.card-content .info-item span {
+    color: var(--text-regular);
+    font-weight: 500;
+    text-align: right;
+}
 .expanded-details {
     margin-top: 20px;
-    border-top: 1px solid #eee;
-    padding-top: 15px;
+    border-top: 1px solid var(--border-color);
+    padding-top: 20px;
 }
 .detail-section {
-    margin: 12px 0;
+    margin: 16px 0;
 }
 .detail-section h4 {
     color: var(--primary);
     margin-bottom: 8px;
+    font-size: 15px;
+    font-weight: 500;
 }
+</style>
+
+<style>
+.toolbar {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    padding: 16px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+.el-pagination {
+    margin-top: 24px;
+    padding: 16px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+.el-tag {
+    font-weight: 500;
+    padding: 0 12px;
+    height: 32px;
+    line-height: 30px;
+    border-radius: 6px;
+}
+</style>
+
+<style>
+/* 卡片入场动画 */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.card-col {
+    animation: fadeInUp 0.5s ease forwards;
+    opacity: 0;
+}
+
+/* 为不同列添加延迟动画 */
+.card-col:nth-child(1) { animation-delay: 0.1s; }
+.card-col:nth-child(2) { animation-delay: 0.2s; }
+.card-col:nth-child(3) { animation-delay: 0.3s; }
+.card-col:nth-child(4) { animation-delay: 0.4s; }
+/* 可以根据需要添加更多 */
 </style>
