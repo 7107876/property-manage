@@ -5,19 +5,47 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>物业管理系统</title>
     
-    <!-- 依赖库 -->
+    <!-- 主CDN源 -->
+    <script src="https://unpkg.com/vue@3.2.36/dist/vue.global.prod.js"></script>
+    <script src="https://unpkg.com/element-plus@2.3.3/dist/index.full.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/element-plus@2.3.3/dist/index.css">
+    
+    <!-- 备用CDN源 -->
     <script src="https://cdn.bootcdn.net/ajax/libs/vue/3.2.36/vue.global.prod.min.js"></script>
     <script src="https://cdn.bootcdn.net/ajax/libs/element-plus/2.3.3/index.full.min.js"></script>
     <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/element-plus/2.3.3/index.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-
-    <!-- 备用本地资源 -->
+    
+    <!-- 修改本地资源路径为相对路径 -->
     <script>
-    if(!window.Vue) {
-        document.write('<script src="./js/vue.global.prod.min.js"><\/script>');
-        document.write('<script src="./js/element-plus.full.min.js"><\/script>');
-        document.write('<link rel="stylesheet" href="./css/element-plus.min.css">');
-    }
+    (function initDependencies() {
+        const resources = [
+            { 
+                test: () => !window.Vue,
+                urls: [
+                    { type: 'script', src: './js/vue.global.prod.min.js' },  // 修改路径
+                    { type: 'script', src: './js/element-plus.full.min.js' },
+                    { type: 'style', href: './css/element-plus.min.css' }
+                ]
+            },
+            {
+                test: () => !document.fonts.check('1rem "Font Awesome 5 Free"'),
+                urls: [
+                    { type: 'style', href: '/css/font-awesome.min.css' }
+                ]
+            }
+        ];
+
+        resources.forEach(resource => {
+            if (resource.test()) {
+                resource.urls.forEach(({ type, src, href }) => {
+                    const elem = type === 'script' 
+                        ? Object.assign(document.createElement('script'), { src })
+                        : Object.assign(document.createElement('link'), { rel: 'stylesheet', href });
+                    document.head.appendChild(elem);
+                });
+            }
+        });
+    })();
     </script>
 
     <style>
@@ -207,7 +235,7 @@
                     
                     <template v-else-if="column.property === 'term'">
                         <div :class="`term-status ${getTermClass(row)}`">
-                            {{ row.remainingDays !== null ? `剩余${row.remainingDays}天` : '异常' }}
+                            {{ row.remainingDays !== null ? `剩余${row.remainingDays}天` : '无' }}
                         </div>
                         <div style="margin-top: 4px">{{ row.term }}</div>
                     </template>
@@ -427,9 +455,32 @@
         }
     };
 
-    const app = Vue.createApp(App);
-    app.use(window.ElementPlus);
-    app.mount('#app');
+    // 安全初始化逻辑
+    function initializeApp() {
+        if (!window.Vue || !window.ElementPlus) {
+            document.body.innerHTML = `
+                <div style="padding:20px;color:red">
+                    <h3>系统初始化失败</h3>
+                    <p>请检查网络连接并刷新页面，或联系技术支持</p>
+                </div>
+            `;
+            return;
+        }
+
+        const app = Vue.createApp(App);
+        app.use(ElementPlus);
+        app.mount('#app');
+    }
+
+    // 延迟初始化确保资源加载
+    if (document.readyState === 'complete') {
+        initializeApp();
+    } else {
+        window.addEventListener('DOMContentLoaded', initializeApp);
+    }
     </script>
 </body>
 </html>
+
+<!-- 添加权限策略 -->
+<meta http-equiv="Permissions-Policy" content="accelerometer=()">
