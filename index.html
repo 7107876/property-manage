@@ -135,6 +135,64 @@
         border-radius: 4px;
         font-size: 12px;
     }
+    
+    .ai-notification {
+        background: #F8FBFF !important;
+        border-left: 4px solid var(--primary) !important;
+        box-shadow: 0 4px 12px rgba(30, 136, 229, 0.3) !important;
+        border-radius: 12px !important;
+        padding: 16px !important;
+        width: 320px !important;
+        border: 1px solid rgba(30, 136, 229, 0.1) !important;
+    }
+    .ai-notification .el-notification__title {
+        color: var(--primary) !important;
+        font-weight: 600;
+        margin-bottom: 8px;
+    }
+    .ai-notification .el-notification__content {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        margin: 0 !important;
+    }
+    .ai-avatar {
+        width: 40px;
+        height: 40px;
+        background: var(--primary);
+        border-radius: 50%;
+        position: relative;
+        flex-shrink: 0;
+    }
+    .ai-mouth {
+        position: absolute;
+        bottom: 10px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 16px;
+        height: 8px;
+        background: white;
+        border-radius: 0 0 8px 8px;
+        animation: speak 0.5s infinite alternate;
+    }
+    .ai-message {
+        flex: 1;
+    }
+    .ai-message p {
+        margin: 4px 0;
+        line-height: 1.5;
+    }
+    .ai-message ul {
+        margin: 8px 0 0 16px;
+        padding: 0;
+    }
+    .ai-message li {
+        margin-bottom: 4px;
+    }
+    @keyframes speak {
+        0% { height: 8px; }
+        100% { height: 4px; }
+    }
     .term-normal {
         background: #f0f9eb;
         color: var(--success);
@@ -450,18 +508,28 @@
                     
                     if (warningItems.length > 0) {
                         this.$notify({
-                            title: '任期预警',
+                            customClass: 'ai-notification',
+                            title: '系统助手提醒',
                             type: 'warning',
                             dangerouslyUseHTMLString: true,
-                            message: `发现<b>${warningItems.length}</b>个项目任期剩余不足1年：
-                                <ul style="margin:5px 0">
-                                    ${warningItems.slice(0,5).map(i => 
-                                        `<li>${i.项目名称}（剩余${i.remainingDays}天）</li>`
-                                    ).join('')}
-                                </ul>
-                                ${warningItems.length > 5 ? '等更多...' : ''}`,
+                            message: `
+                                <div class="ai-avatar">
+                                    <div class="ai-mouth"></div>
+                                </div>
+                                <div class="ai-message">
+                                    <p>欢迎使用物业管理系统！本系统帮助您跟踪和管理物业项目信息。</p>
+                            <p>当前发现<b>${warningItems.length}</b>个项目任期剩余不足1年：</p>
+                                    <ul>
+                                        ${warningItems.slice(0,5).map(i => 
+                                            `<li>${i.项目名称}（剩余${i.remainingDays}天）</li>`
+                                        ).join('')}
+                                    </ul>
+                                    ${warningItems.length > 5 ? '<p>等更多...</p>' : ''}
+                                </div>
+                            `,
                             duration: 0,
-                            position: 'bottom-right'
+                            position: 'bottom-right',
+                            offset: 40
                         });
                     }
                     
