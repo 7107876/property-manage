@@ -50,15 +50,15 @@
 
     <style>
     :root {
-        --primary: #409EFF;
-        --warning: #E6A23C;
-        --danger: #F56C6C;
-        --success: #67C23A;
-        --text-primary: #303133;
-        --text-regular: #606266;
-        --text-secondary: #909399;
-        --border-color: #DCDFE6;
-        --bg-color: #f5f7fa;
+        --primary: #1E88E5;
+        --warning: #FFB74D;
+        --danger: #E53935;
+        --success: #43A047;
+        --text-primary: #263238;
+        --text-regular: #546E7A;
+        --text-secondary: #90A4AE;
+        --border-color: #CFD8DC;
+        --bg-color: #F5F7FA;
     }
 
     body {
@@ -72,11 +72,12 @@
     #app {
         max-width: 1600px;
         margin: 20px auto;
-        background: white;
+        background: #FFFFFF;
         border-radius: 16px;
-        box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+        box-shadow: 0 4px 24px rgba(30, 136, 229, 0.1);
         padding: 32px;
         transition: all 0.3s ease;
+        border: 1px solid var(--border-color);
     }
 
     .toolbar {
@@ -533,17 +534,20 @@
     transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
     min-height: 200px;
     border-radius: 12px;
-    border: 1px solid rgba(0,0,0,0.05);
-    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 2px 8px rgba(30, 136, 229, 0.08);
+    background: #FFFFFF;
 }
 .property-card:hover {
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 12px rgba(30, 136, 229, 0.15);
+    border-color: var(--primary);
 }
 .property-card.expanded {
     position: relative;
     z-index: 2;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    box-shadow: 0 8px 24px rgba(30, 136, 229, 0.2);
     transform: scale(1.02);
+    border-color: var(--primary);
 }
 .card-header {
     display: flex;
@@ -558,6 +562,7 @@
     font-size: 18px;
     font-weight: 600;
     color: var(--primary);
+    letter-spacing: 0.5px;
 }
 .card-content .info-item {
     margin: 12px 0;
