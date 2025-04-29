@@ -182,7 +182,7 @@
         max-height: 60vh;
         overflow-y: auto;
     }
-    </style>
+</style>
 </head>
 <body>
     <div id="app">
@@ -292,8 +292,16 @@
                     { prop: '详细地址', label: '详细地址' },
                     { prop: '项目性质', label: '项目类型' },
                     { prop: '总户数', label: '总户数' },
+                    { prop: '楼栋数量', label: '楼栋数量' },
+                    { prop: '单元数量', label: '单元数量' },
+                    { prop: '项目取得方式', label: '项目取得方式' },
+                    { prop: '项目固定电话', label: '项目固定电话' },
+                    { prop: '物业公司从业人数', label: '物业公司从业人数' },
+                    { prop: '所属社区', label: '所属社区' },
                     { prop: '是否设立', label: '业委会状态' },
                     { prop: '业委会届数', label: '当前届数' },
+                    { prop: '是否在有效期内', label: '有效期' },
+                    { prop: '业委会是否正常换届', label: '业委会换届' },
                     { prop: '小区房屋是否归集维修资金', label: '维修资金' }
                 ],
                 rawData: [],
@@ -399,10 +407,8 @@
             
             formatCardValue(col, item) {
                 if (col.prop === '星级') {
-                    // 修复星级显示逻辑
-                    return Array.from({length: 5}, (_, n) => 
-                        `<i class="${n < item.星级 ? 'fas fa-star' : 'far fa-star'}"></i>`
-                    ).join('');
+                    // 直接显示星级文本
+                    return item.星级 || '无';
                 }
                 if (typeof item[col.prop] === 'number') {
                     return item[col.prop].toLocaleString();
@@ -589,7 +595,6 @@
     align-items: center;
     gap: 16px;
     margin-bottom: 24px;
-    flex-wrap: wrap;
     padding: 16px;
     background: white;
     border-radius: 12px;
