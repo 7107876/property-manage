@@ -194,20 +194,16 @@
         100% { height: 4px; }
     }
     .term-normal {
-        background: #f0f9eb !important;
-        color: #43A047 !important;
+        background: #00ff00;
     }
     .term-warning {
-        background: #fdf6ec !important;
-        color: #FFB74D !important;
+        background: #ffa500;
     }
     .term-critical {
-        background: #fef0f0 !important;
-        color: #E53935 !important;
+        background: #ff0000;
     }
     #app .el-tag.term-tag {
-        background: inherit;
-        color: inherit;
+        background: inherit !important;
     }
 
     .star-rating {
@@ -244,6 +240,12 @@
     .el-dialog__body {
         max-height: 60vh;
         overflow-y: auto;
+    }
+    .term-indicator {
+        width: 8px;
+        height: 16px;
+        display: inline-block;
+        margin-right: 8px;
     }
 </style>
 </head>
@@ -292,8 +294,9 @@
                 >
                     <div class="card-header">
                         <h3 class="title">{{ item.项目名称 }}</h3>
-                        <el-tag :type="getTagType(item)" class="term-tag">
-                            {{ item.remainingDays !== null ? `剩余${item.remainingDays}天` : '无' }}
+                        <el-tag :type="getTagType(item)">
+                            <span :class="getTermClass(item)" class="term-indicator"></span>
+                            <span style="color: black">{{ item.remainingDays !== null ? `剩余${item.remainingDays}天` : '无' }}</span>
                         </el-tag>
                     </div>
 
