@@ -293,7 +293,7 @@
                     @click="toggleExpand(item)"
                 >
                     <div class="card-header">
-                        <h3 class="title">{{ item.项目名称 }}</h3>
+                        <h3 class="title">{{ item[Object.keys(item)[0]] }}</h3>
                         <el-tag :type="getTagType(item)">
                             <span :class="getTermClass(item)" class="term-indicator"></span>
                             <span style="color: black">{{ item.remainingDays !== null ? `剩余${item.remainingDays}天` : '无' }}</span>
@@ -348,29 +348,38 @@
     const App = {
         data() {
             return {
-                // 新增卡片列定义
-                mainColumns: [
-                    { prop: '星级', label: '星级' },
-                    { prop: '物业企业名称', label: '物业公司' },
-                    { prop: 'contact', label: '负责人' },
-                    { prop: '总建筑面积（㎡）', label: '建筑面积' },
-                ],
-                detailColumns: [
-                    { prop: '详细地址', label: '详细地址' },
-                    { prop: '项目性质', label: '项目类型' },
-                    { prop: '总户数', label: '总户数' },
-                    { prop: '楼栋数量', label: '楼栋数量' },
-                    { prop: '单元数量', label: '单元数量' },
-                    { prop: '项目取得方式', label: '项目取得方式' },
-                    { prop: '项目固定电话', label: '项目固定电话' },
-                    { prop: '物业公司从业人数', label: '物业公司从业人数' },
-                    { prop: '所属社区', label: '所属社区' },
-                    { prop: '是否设立', label: '业委会状态' },
-                    { prop: '业委会届数', label: '当前届数' },
-                    { prop: '是否在有效期内', label: '有效期' },
-                    { prop: '业委会是否正常换届', label: '业委会换届' },
-                    { prop: '小区房屋是否归集维修资金', label: '维修资金' }
-                ],
+                // 动态生成属性列表
+                mainColumns: [],
+                detailColumns: [],
+                
+                // 在loadData方法中添加动态生成逻辑
+                generateColumns() {
+                    if (this.rawData.length === 0) return;
+                    
+                    const allProps = Object.keys(this.rawData[0]).filter(
+                        prop => !prop.endsWith(':J')
+                    );
+                    
+                    // 排除第一个字段
+                    const firstProp = allProps[0];
+                    const filteredProps = allProps.filter(prop => prop !== firstProp);
+                    
+                    this.mainColumns = filteredProps
+                        .filter(prop => !prop.endsWith(':X'))
+                        .map(prop => ({
+                            prop,
+                            label: prop,
+                            formatter: (row, col, cellValue) => `${cellValue || '—'}`
+                        }));
+                    
+                    this.detailColumns = filteredProps
+                        .filter(prop => prop.endsWith(':X'))
+                        .map(prop => ({
+                            prop,
+                            label: prop.replace(':X', ''),
+                            formatter: (row, col, cellValue) => `${cellValue || '—'}`
+                        }));
+                },
                 rawData: [],
                 processedData: [],
                 searchText: '',
@@ -417,7 +426,8 @@
         },
         methods: {
             getTermClass(row) {
-                if (!row.是否设立 || row.是否设立 === '否' || row.remainingDays === null) return 'term-critical';
+                const dateField = Object.keys(row).find(key => key.endsWith(':J'));
+                if (!dateField || row.remainingDays === null) return 'term-critical';
                 if (row.remainingDays <= 90) return 'term-critical';
                 if (row.remainingDays <= 365) return 'term-warning';
                 return 'term-normal';
@@ -463,13 +473,30 @@
                     };
                 } catch (error) {
                     this.errorCount++;
-                    this.errorData.push({
-                        project: this.currentItem?.项目名称 || '未知项目',
-                        field: '本届业委会任期起止时间',
-                        message: `原始值："${raw}"，错误：${error.message}`
-                    });
                     return { formatted: '日期异常', remainingDays: null };
                 }
+            },
+            
+            findDateField(item) {
+                return Object.keys(item).find(key => key.endsWith(':J')) || null;
+            },
+            
+            processDateField(item) {
+                const dateField = this.findDateField(item);
+                if (!dateField) return { formatted: '—', remainingDays: null };
+                
+                this.currentItem = item;
+                const result = this.formatDate(item[dateField]);
+                
+                if (result.formatted === '日期异常') {
+                    this.errorData.push({
+                        project: item.项目名称 || '未知项目',
+                        field: dateField,
+                        message: `原始值："${item[dateField]}"，错误：日期解析失败`
+                    });
+                }
+                
+                return result;
             },
 
             // 新增切换方法
@@ -479,14 +506,8 @@
             },
             
             formatCardValue(col, item) {
-                if (col.prop === '星级') {
-                    // 直接显示星级文本
-                    return item.星级 || '无';
-                }
-                if (typeof item[col.prop] === 'number') {
-                    return item[col.prop].toLocaleString();
-                }
-                return item[col.prop] || '—';
+                const value = item[col.prop];
+                return value !== null && value !== undefined && value !== '' ? value : '—';
             },
 
             async loadData() {
@@ -498,8 +519,7 @@
                     
                     // 添加isExpanded字段
                     this.processedData = this.rawData.map(item => {
-                        this.currentItem = item;
-                        const termResult = this.formatDate(item['本届业委会任期起止时间']);
+                        const termResult = this.processDateField(item);
                         
                         return {
                             ...item,
@@ -514,6 +534,8 @@
                             '业委会届数': Number(item.业委会届数) || 0
                         };
                     });
+                    
+                    this.generateColumns();
                     
                     // 在数据处理完成后执行预警检查
                     const warningItems = this.processedData.filter(item => 
@@ -535,13 +557,32 @@
                             <p>当前发现<b>${warningItems.length}</b>个项目任期剩余不足1年：</p>
                                     <ul>
                                         ${warningItems.slice(0,5).map(i => 
-                                            `<li>${i.项目名称}（剩余${i.remainingDays}天）</li>`
+                                            `<li>${i[Object.keys(i)[0]]}（剩余${i.remainingDays}天）</li>`
                                         ).join('')}
                                     </ul>
                                     ${warningItems.length > 5 ? '<p>等更多...</p>' : ''}
                                 </div>
                             `,
                             duration: 0,
+                            position: 'bottom-right',
+                            offset: 40
+                        });
+                    } else if (this.errorData.length === 0) {
+                        this.$notify({
+                            customClass: 'ai-notification',
+                            title: '系统助手提醒',
+                            type: 'success',
+                            dangerouslyUseHTMLString: true,
+                            message: `
+                                <div class="ai-avatar">
+                                    <div class="ai-mouth"></div>
+                                </div>
+                                <div class="ai-message">
+                                    <p>欢迎使用物业管理系统！本系统帮助您跟踪和管理物业项目信息。</p>
+                                    <p>当前所有项目运行良好。</p>
+                                </div>
+                            `,
+                            duration: 3000,
                             position: 'bottom-right',
                             offset: 40
                         });
@@ -552,6 +593,7 @@
                 } finally {
                     this.loading = false;
                     this.currentItem = null;
+                    this.generateColumns();
                 }
             },
 
@@ -616,20 +658,23 @@
     transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
     min-height: 200px;
     border-radius: 12px;
-    border: 1px solid var(--border-color);
-    box-shadow: 0 2px 8px rgba(30, 136, 229, 0.08);
+    border: 1px solid rgba(30, 136, 229, 0.1);
+    box-shadow: 0 4px 12px rgba(30, 136, 229, 0.08);
     background: #FFFFFF;
+    background: linear-gradient(135deg, #F8FBFF 0%, #FFFFFF 100%);
 }
 .property-card:hover {
-    box-shadow: 0 4px 12px rgba(30, 136, 229, 0.15);
+    box-shadow: 0 8px 24px rgba(30, 136, 229, 0.12);
     border-color: var(--primary);
+    background: linear-gradient(135deg, #F0F7FF 0%, #FFFFFF 100%);
 }
 .property-card.expanded {
     position: relative;
     z-index: 2;
-    box-shadow: 0 8px 24px rgba(30, 136, 229, 0.2);
+    box-shadow: 0 12px 32px rgba(30, 136, 229, 0.15);
     transform: scale(1.02);
     border-color: var(--primary);
+    background: linear-gradient(135deg, #E3F2FD 0%, #FFFFFF 100%);
 }
 .card-header {
     display: flex;
@@ -637,13 +682,13 @@
     align-items: center;
     margin-bottom: 16px;
     padding-bottom: 8px;
-    border-bottom: 1px dashed var(--border-color);
+    border-bottom: 1px dashed rgba(30, 136, 229, 0.2);
 }
 .card-header .title {
     margin: 0;
     font-size: 18px;
     font-weight: 600;
-    color: var(--primary);
+    color: #1565C0;
     letter-spacing: 0.5px;
 }
 .card-content .info-item {
@@ -661,18 +706,27 @@
     text-align: right;
 }
 .expanded-details {
-    margin-top: 20px;
+    margin-top: 12px;
     border-top: 1px solid var(--border-color);
-    padding-top: 20px;
+    padding-top: 12px;
 }
 .detail-section {
-    margin: 16px 0;
+    display: flex;
+    align-items: center;
+    margin: 2px 0;
+    line-height: 1.2;
 }
 .detail-section h4 {
     color: var(--primary);
-    margin-bottom: 8px;
-    font-size: 15px;
+    margin: 0 8px 0 0;
+    font-size: 14px;
     font-weight: 500;
+    min-width: 100px;
+}
+.detail-section > div {
+    text-align: right;
+    flex: 1;
+    font-size: 14px;
 }
 </style>
 
