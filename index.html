@@ -658,23 +658,20 @@
     transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
     min-height: 200px;
     border-radius: 12px;
-    border: 1px solid rgba(30, 136, 229, 0.1);
-    box-shadow: 0 4px 12px rgba(30, 136, 229, 0.08);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 2px 8px rgba(30, 136, 229, 0.08);
     background: #FFFFFF;
-    background: linear-gradient(135deg, #F8FBFF 0%, #FFFFFF 100%);
 }
 .property-card:hover {
-    box-shadow: 0 8px 24px rgba(30, 136, 229, 0.12);
+    box-shadow: 0 4px 12px rgba(30, 136, 229, 0.15);
     border-color: var(--primary);
-    background: linear-gradient(135deg, #F0F7FF 0%, #FFFFFF 100%);
 }
 .property-card.expanded {
     position: relative;
     z-index: 2;
-    box-shadow: 0 12px 32px rgba(30, 136, 229, 0.15);
+    box-shadow: 0 8px 24px rgba(30, 136, 229, 0.2);
     transform: scale(1.02);
     border-color: var(--primary);
-    background: linear-gradient(135deg, #E3F2FD 0%, #FFFFFF 100%);
 }
 .card-header {
     display: flex;
@@ -682,13 +679,13 @@
     align-items: center;
     margin-bottom: 16px;
     padding-bottom: 8px;
-    border-bottom: 1px dashed rgba(30, 136, 229, 0.2);
+    border-bottom: 1px dashed var(--border-color);
 }
 .card-header .title {
     margin: 0;
     font-size: 18px;
     font-weight: 600;
-    color: #1565C0;
+    color: var(--primary);
     letter-spacing: 0.5px;
 }
 .card-content .info-item {
@@ -706,19 +703,21 @@
     text-align: right;
 }
 .expanded-details {
-    margin-top: 12px;
+    margin-top: 8px;
     border-top: 1px solid var(--border-color);
-    padding-top: 12px;
+    padding-top: 8px;
 }
 .detail-section {
     display: flex;
-    align-items: center;
-    margin: 2px 0;
-    line-height: 1.2;
+    align-items: flex-start;
+    margin: 6px 0;
+    line-height: 1.4;
+    padding: 4px 0;
+    border-bottom: 1px dashed rgba(207, 216, 220, 0.5);
 }
 .detail-section h4 {
     color: var(--primary);
-    margin: 0 8px 0 0;
+    margin: 0 12px 0 0;
     font-size: 14px;
     font-weight: 500;
     min-width: 100px;
@@ -727,6 +726,8 @@
     text-align: right;
     flex: 1;
     font-size: 14px;
+    padding-right: 8px;
+    word-break: break-word;
 }
 </style>
 
