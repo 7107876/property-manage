@@ -496,6 +496,7 @@
                     };
                 } catch (error) {
                     this.errorCount++;
+                    console.error('日期解析错误:', error.message);
                     return { formatted: '日期异常', remainingDays: null };
                 }
             },
@@ -517,6 +518,7 @@
                         field: dateField,
                         message: `原始值："${item[dateField]}"，错误：日期解析失败`
                     });
+                    console.error('数据异常:', item.项目名称, dateField, item[dateField]);
                 }
                 
                 return result;
@@ -546,7 +548,19 @@
                 
                 while (retryCount < maxRetries) {
                     try {
-                        const response = await fetch('data.json');
+                        // 添加加载状态
+                        this.loading = true;
+                        
+                        // 添加超时处理
+                        const controller = new AbortController();
+                        const timeoutId = setTimeout(() => controller.abort(), 5000);
+                        
+                        const response = await fetch('data.json', {
+                            signal: controller.signal,
+                            cache: 'no-cache'
+                        });
+                        clearTimeout(timeoutId);
+                        
                         if (!response.ok) throw new Error(`加载失败: ${response.status}`);
                         
                         // 验证数据完整性
