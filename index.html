@@ -556,10 +556,18 @@
                         const controller = new AbortController();
                         const timeoutId = setTimeout(() => controller.abort(), 5000);
                         
-                        const response = await fetch('data.json', {
-                            signal: controller.signal,
-                            cache: 'no-cache'
-                        });
+                        // 清除旧缓存
+localStorage.removeItem('propertyData');
+
+// 添加时间戳参数避免缓存
+const timestamp = new Date().getTime();
+const response = await fetch(`data.json?t=${timestamp}`, {
+    signal: controller.signal,
+    cache: 'no-cache',
+    headers: {
+        'Cache-Control': 'no-cache'
+    }
+});
                         clearTimeout(timeoutId);
                         
                         if (!response.ok) throw new Error(`加载失败: ${response.status}`);
@@ -571,9 +579,13 @@
                         
                         this.rawData = data;
                     
-                    // 保存到本地缓存
+                    // 保存到本地缓存并添加版本标识
                     try {
-                        localStorage.setItem('propertyData', JSON.stringify(data));
+                        const cacheData = {
+                            data: data,
+                            version: new Date().getTime()
+                        };
+                        localStorage.setItem('propertyData', JSON.stringify(cacheData));
                     } catch (e) {
                         console.warn('本地存储失败:', e);
                     }
