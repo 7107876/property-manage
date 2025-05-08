@@ -497,6 +497,7 @@
                 } catch (error) {
                     this.errorCount++;
                     console.error('日期解析错误:', error.message);
+                    this.showNotification('数据加载失败，请稍后重试', 'error');
                     return { formatted: '日期异常', remainingDays: null };
                 }
             },
@@ -570,13 +571,20 @@
                         
                         this.rawData = data;
                     
+                    // 保存到本地缓存
+                    try {
+                        localStorage.setItem('propertyData', JSON.stringify(data));
+                    } catch (e) {
+                        console.warn('本地存储失败:', e);
+                    }
+                    
                     // 添加isExpanded字段
                     this.processedData = this.rawData.map(item => {
                         const termResult = this.processDateField(item);
                         
                         return {
                             ...item,
-                            isExpanded: false, // 初始化展开状态
+                            isExpanded: false,
                             term: termResult.formatted,
                             remainingDays: termResult.remainingDays,
                             contact: item.负责人手机 
