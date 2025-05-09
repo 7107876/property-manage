@@ -523,6 +523,7 @@
                         message: `原始值："${item[dateField]}"，错误：日期解析失败`
                     });
                     console.error('数据异常:', item.项目名称, dateField, item[dateField]);
+                    this.showNotification('数据加载失败，请稍后重试', 'error');
                 }
                 
                 return result;
@@ -557,16 +558,28 @@
                         
                         // 添加超时处理
                         const controller = new AbortController();
-                        const timeoutId = setTimeout(() => controller.abort(), 5000);
+                        const timeoutId = setTimeout(() => controller.abort(), 10000); // 延长超时时间到10秒
                         
-                        // 清除旧缓存
-localStorage.removeItem('propertyData');
-
-// 添加时间戳参数避免缓存
-const timestamp = new Date().getTime();
-const response = await fetch(`data.json?t=${timestamp}`, {
-    signal: controller.signal,
-    cache: 'no-cache',
+                        // 检查本地缓存
+                        const cachedData = localStorage.getItem('propertyData');
+                        if (cachedData) {
+                            try {
+                                const parsedData = JSON.parse(cachedData);
+                                if (parsedData && parsedData.expiry > Date.now()) {
+                                    this.rawData = parsedData.data;
+                                    this.processData();
+                                    return;
+                                }
+                            } catch (e) {
+                                console.error('缓存解析错误:', e);
+                            }
+                        }
+                        
+                        // 添加时间戳参数避免缓存
+                        const timestamp = new Date().getTime();
+                        const response = await fetch(`data.json?t=${timestamp}`, {
+                            signal: controller.signal,
+                            cache: 'no-cache',
     headers: {
         'Cache-Control': 'no-cache'
     }
