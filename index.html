@@ -17,6 +17,7 @@
     
     <!-- 修改本地资源路径为相对路径 -->
     <script>
+    document.addEventListener('DOMContentLoaded', function() {
     (function initDependencies() {
         const resources = [
             { 
@@ -46,9 +47,11 @@
             }
         });
     })();
+});
     </script>
 
     <style>
+    [v-cloak] { display: none; }
     :root {
         --primary: #1E88E5;
         --warning: #FFB74D;
@@ -250,7 +253,7 @@
 </style>
 </head>
 <body>
-    <div id="app">
+    <div id="app" v-cloak>
         <div class="toolbar">
             <el-input
                 v-model="searchText"
@@ -568,6 +571,12 @@ const response = await fetch(`data.json?t=${timestamp}`, {
         'Cache-Control': 'no-cache'
     }
 });
+
+// 如果数据为空，显示空状态
+if (!response.ok || !response.body) {
+    this.showNotification('数据加载失败，请稍后重试', 'error');
+    return;
+}
                         clearTimeout(timeoutId);
                         
                         if (!response.ok) throw new Error(`加载失败: ${response.status}`);
