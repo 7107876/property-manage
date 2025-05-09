@@ -46,30 +46,120 @@
     document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('global-loading').style.display = 'none';
     (function initDependencies() {
+        // 资源缓存键名
+        const CACHE_KEY = 'property-manage-resources-v1';
+        
+        // 检查并更新缓存
+        async function updateCache() {
+            try {
+                const cache = await caches.open(CACHE_KEY);
+                const urls = [
+                    'https://unpkg.com/vue@3.2.36/dist/vue.global.prod.js',
+                    'https://unpkg.com/element-plus@2.3.3/dist/index.full.min.js',
+                    'https://unpkg.com/element-plus@2.3.3/dist/index.css',
+                    'https://cdn.bootcdn.net/ajax/libs/font-awesome/5.15.4/css/all.min.css'
+                ];
+                await cache.addAll(urls);
+                return true;
+            } catch (e) {
+                console.error('Failed to cache resources:', e);
+                return false;
+            }
+        }
+        
+        // 从缓存加载资源
+        async function loadFromCache(url) {
+            try {
+                const cache = await caches.open(CACHE_KEY);
+                const response = await cache.match(url);
+                if (response) {
+                    return response;
+                }
+                window.__showRefreshButton();
+                return null;
+            } catch (e) {
+                console.error('Cache load failed:', e);
+                window.__showRefreshButton();
+                return null;
+            }
+        }
+        
         const resources = [
             { 
                 test: () => !window.Vue,
                 urls: [
-                    { type: 'script', src: './js/vue.global.prod.min.js' },  // 修改路径
-                    { type: 'script', src: './js/element-plus.full.min.js' },
-                    { type: 'style', href: './css/element-plus.min.css' }
+                    { 
+                        type: 'script', 
+                        src: 'https://unpkg.com/vue@3.2.36/dist/vue.global.prod.js',
+                        fallback: './js/vue.global.prod.min.js'
+                    },
+                    { 
+                        type: 'script', 
+                        src: 'https://unpkg.com/element-plus@2.3.3/dist/index.full.min.js',
+                        fallback: './js/element-plus.full.min.js'
+                    },
+                    { 
+                        type: 'style', 
+                        href: 'https://unpkg.com/element-plus@2.3.3/dist/index.css',
+                        fallback: './css/element-plus.min.css'
+                    }
                 ]
             },
             {
                 test: () => !document.fonts.check('1rem "Font Awesome 5 Free"'),
                 urls: [
-                    { type: 'style', href: '/css/font-awesome.min.css' }
+                    { 
+                        type: 'style', 
+                        href: 'https://cdn.bootcdn.net/ajax/libs/font-awesome/5.15.4/css/all.min.css',
+                        fallback: '/css/font-awesome.min.css'
+                    }
                 ]
             }
         ];
 
+        // 初始化缓存
+        updateCache();
+        
+        // 暴露给Vue实例
+        window.__updateCache = updateCache;
+        window.__showRefreshButton = () => {
+            const app = document.querySelector('#app').__vue_app__;
+            app._instance.proxy.showRefreshButton = true;
+        };
+        
         resources.forEach(resource => {
             if (resource.test()) {
-                resource.urls.forEach(({ type, src, href }) => {
-                    const elem = type === 'script' 
-                        ? Object.assign(document.createElement('script'), { src })
-                        : Object.assign(document.createElement('link'), { rel: 'stylesheet', href });
-                    document.head.appendChild(elem);
+                resource.urls.forEach(async ({ type, src, href, fallback }) => {
+                    const url = src || href;
+                    const cachedResponse = await loadFromCache(url);
+                    
+                    if (cachedResponse) {
+                        if (type === 'script') {
+                            const blob = await cachedResponse.blob();
+                            const objectURL = URL.createObjectURL(blob);
+                            const elem = Object.assign(document.createElement('script'), { 
+                                src: objectURL 
+                            });
+                            document.head.appendChild(elem);
+                        } else {
+                            const blob = await cachedResponse.blob();
+                            const objectURL = URL.createObjectURL(blob);
+                            const elem = Object.assign(document.createElement('link'), { 
+                                rel: 'stylesheet', 
+                                href: objectURL 
+                            });
+                            document.head.appendChild(elem);
+                        }
+                    } else {
+                        // 缓存未命中，使用备用URL
+                        const elem = type === 'script' 
+                            ? Object.assign(document.createElement('script'), { src: fallback || src })
+                            : Object.assign(document.createElement('link'), { 
+                                rel: 'stylesheet', 
+                                href: fallback || href 
+                            });
+                        document.head.appendChild(elem);
+                    }
                 });
             }
         });
@@ -365,6 +455,15 @@
             >
                 异常数据：{{ errorCount }} 条 <i class="el-icon-warning-outline"></i>
             </el-tag>
+            
+            <el-button 
+                type="primary" 
+                @click="refreshCache"
+                :loading="cacheLoading"
+                v-if="showRefreshButton"
+            >
+                <i class="el-icon-refresh"></i> 刷新缓存
+            </el-button>
         </div>
 
         <!-- 替换原有的el-table为卡片式布局 -->
@@ -439,6 +538,8 @@
     const App = {
         data() {
             return {
+                showRefreshButton: false,
+                cacheLoading: false,
                 // 动态生成属性列表
                 mainColumns: [],
                 detailColumns: [],
@@ -516,6 +617,20 @@
             }
         },
         methods: {
+            async refreshCache() {
+                this.cacheLoading = true;
+                try {
+                    const success = await window.__updateCache();
+                    if (success) {
+                        this.$message.success('缓存更新成功，即将刷新页面');
+                        setTimeout(() => location.reload(), 1000);
+                    } else {
+                        this.$message.error('缓存更新失败');
+                    }
+                } finally {
+                    this.cacheLoading = false;
+                }
+            },
             getTermClass(row) {
                 const dateField = Object.keys(row).find(key => key.endsWith(':J'));
                 if (!dateField || row.remainingDays === null) return 'term-critical';
