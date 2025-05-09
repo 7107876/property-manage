@@ -250,10 +250,40 @@
         display: inline-block;
         margin-right: 8px;
     }
+    
+    .loading-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(255,255,255,0.7);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 9999;
+    }
+    
+    .loading-spinner {
+        width: 50px;
+        height: 50px;
+        border: 5px solid #f3f3f3;
+        border-top: 5px solid #1E88E5;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
 </style>
 </head>
 <body>
     <div id="app" v-cloak>
+        <div class="loading-overlay" v-if="loading">
+            <div class="loading-spinner"></div>
+        </div>
         <div class="toolbar">
             <el-input
                 v-model="searchText"
@@ -547,9 +577,26 @@
             },
 
             async loadData() {
-                const maxRetries = 3;
+                // 显示加载动画
+                this.loading = true;
+                
+                const maxRetries = 5;
                 let retryCount = 0;
                 let lastError = null;
+                
+                // 立即检查缓存并显示
+                const cachedData = localStorage.getItem('propertyData');
+                if (cachedData) {
+                    try {
+                        const parsed = JSON.parse(cachedData);
+                        if (parsed.data && parsed.timestamp) {
+                            this.rawData = parsed.data;
+                            this.processData();
+                        }
+                    } catch (e) {
+                        console.error('缓存解析错误:', e);
+                    }
+                }
                 
                 while (retryCount < maxRetries) {
                     try {
@@ -558,10 +605,9 @@
                         
                         // 添加超时处理
                         const controller = new AbortController();
-                        const timeoutId = setTimeout(() => controller.abort(), 10000); // 延长超时时间到10秒
+                        const timeoutId = setTimeout(() => controller.abort(), 3000); // 延长超时时间到10秒
                         
                         // 检查本地缓存
-                        const cachedData = localStorage.getItem('propertyData');
                         if (cachedData) {
                             try {
                                 const parsedData = JSON.parse(cachedData);
@@ -703,6 +749,8 @@ if (!response.ok || !response.body) {
                 this.loading = false;
                 this.currentItem = null;
                 this.generateColumns();
+                
+                // 隐藏加载动画
             },
 
             handleSizeChange(size) {
@@ -711,6 +759,7 @@ if (!response.ok || !response.body) {
             },
             handleCurrentChange(page) {
                 this.currentPage = page;
+                window.scrollTo(0, 0);
             }
         },
         mounted() {
