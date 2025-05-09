@@ -117,6 +117,25 @@
         margin-bottom: 20px;
         flex-wrap: wrap;
     }
+    
+    .page-title {
+        display: flex;
+        align-items: center;
+        margin-right: 20px;
+    }
+    
+    .page-title h2 {
+        margin: 0;
+        font-size: 20px;
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+    
+    .page-title .el-icon-office-building {
+        font-size: 24px;
+        color: var(--primary);
+        margin-right: 10px;
+    }
 
     .el-tag {
         font-weight: 500;
@@ -304,6 +323,9 @@
         0% { transform: rotate(0deg); }
         100% { transform: rotate(360deg); }
     }
+    .house-icon {
+        display: inline-block;
+    }
 </style>
 </head>
 <body>
@@ -315,6 +337,12 @@
             <div class="loading-spinner"></div>
         </div>
         <div class="toolbar">
+            <div class="page-title">
+                <svg class="house-icon" style="width:32px;height:32px;margin-right:10px;" viewBox="0 0 24 24">
+  <path fill="#1E88E5" d="M12,3L2,12H5V20H19V12H22L12,3M12,7.7C14.1,7.7 15.8,9.4 15.8,11.5C15.8,13.6 14.1,15.3 12,15.3C9.9,15.3 8.2,13.6 8.2,11.5C8.2,9.4 9.9,7.7 12,7.7M7,14V16H17V14H7Z" />
+</svg>
+                <h2>物业管理系统</h2>
+            </div>
             <el-input
                 v-model="searchText"
                 placeholder="输入任意字段搜索"
