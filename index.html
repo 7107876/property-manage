@@ -374,6 +374,63 @@
         .el-table th {
             padding: 8px 0;
         }
+        
+        /* 重新组织数据可视化区域布局 */
+        .chart-section {
+            display: flex;
+            flex-direction: column;
+            margin-top: 30px;
+        }
+        
+        .chart-section h3 {
+            font-size: 18px;
+            margin: 0 0 15px 0;
+            font-weight: 600;
+            color: var(--text-primary);
+            padding: 0 15px;
+        }
+        
+        .chart-toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            padding: 0 15px 15px;
+        }
+        
+        /* 图表容器移动端适配 */
+        #chart-container {
+            height: 350px;
+            padding: 15px;
+            margin: 0;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
+        }
+        
+        /* 图表选项移动端适配 */
+        .echarts-toolbox {
+            right: 10px !important;
+            top: 10px !important;
+        }
+        
+        /* 饼图标签移动端适配 */
+        .echarts-series-name {
+            font-size: 12px !important;
+            margin: 5px 0 !important;
+        }
+        
+        /* 饼图标签间距调整 */
+        .echarts-data-item {
+            margin: 8px 0 !important;
+        }
+        
+        /* 字段按钮和饼图分开显示 */
+        .toolbar {
+            margin-bottom: 30px;
+        }
+        .chart-section {
+            margin-top: 30px;
+        }
     }
 
     .el-dialog__body {
@@ -532,7 +589,218 @@
                 <el-table-column prop="message" label="错误描述" width="400"></el-table-column>
             </el-table>
         </el-dialog>
+        
+        <div class="chart-section">
+            <h3 style="margin: 20px 0 10px;">数据可视化面板</h3>
+            <div id="chart-container" style="width: 100%; height: 400px;"></div>
+        </div>
     </div>
+    
+    <!-- ECharts主CDN源 -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js" onerror="loadFallbackECharts()"></script>
+    <!-- ECharts备用CDN源 -->
+    <script id="fallback-echarts" src="https://cdn.bootcdn.net/ajax/libs/echarts/5.4.3/echarts.min.js" style="display:none"></script>
+    <script>
+      function loadFallbackECharts() {
+        console.log('主CDN加载失败，尝试使用备用CDN');
+        document.getElementById('fallback-echarts').style.display = 'block';
+      }
+    </script>
+    <script>
+        // 图表配置存储键名
+        const CHART_CONFIG_KEY = 'property-chart-config';
+        
+        // 防抖函数
+        function debounce(func, wait) {
+            let timeout;
+            return function() {
+                clearTimeout(timeout);
+                timeout = setTimeout(func, wait);
+            };
+        }
+        
+        // 验证数据格式
+        function validateData(data) {
+            if (!Array.isArray(data)) {
+                throw new Error('数据格式错误：应为数组');
+            }
+            if (data.length === 0) {
+                throw new Error('数据为空');
+            }
+            if (!data[0] || typeof data[0] !== 'object') {
+                throw new Error('数据项格式错误：应为对象');
+            }
+            return true;
+        }
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            // 检查ECharts是否加载成功
+            function checkECharts() {
+                if (typeof echarts === 'undefined') {
+                    console.error('ECharts加载失败：全局echarts对象未定义');
+                    alert('图表库加载失败，请检查网络连接或刷新页面');
+                    return false;
+                }
+                return true;
+            }
+            
+
+            // 初始化图表
+            function initChart() {
+                if (!checkECharts()) return;
+                
+                const chartDom = document.getElementById('chart-container');
+                if (!chartDom) {
+                    console.error('图表容器未找到：元素#chart-container不存在');
+                    return;
+                }
+                
+                const myChart = echarts.init(chartDom);
+                
+                // 显示加载状态
+                myChart.showLoading();
+                
+                // 加载数据
+                fetch('./data.json')
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`网络请求失败: ${response.status} ${response.statusText}`);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        validateData(data);
+                        
+                        // 分析数据字段
+                        const fields = Object.keys(data[0]);
+                        
+                        // 生成系列数据
+                        const series = fields.map(field => {
+                            // 去除字段名中的冒号及后面内容
+                            const displayName = field.includes(':') ? field.split(':')[0] : field;
+                            // 数值类型字段直接显示值
+                            if (typeof data[0][field] === 'number') {
+                                return {
+                                    name: displayName,
+                                    type: 'bar',
+                                    data: data.map(item => item[field])
+                                };
+                            }
+                            
+                            // 文本类型字段统计出现频率
+                            const valueMap = {};
+                            data.forEach(item => {
+                                const value = item[field];
+                                valueMap[value] = (valueMap[value] || 0) + 1;
+                            });
+                            
+                            return {
+                                name: displayName,
+                                type: 'bar',
+                                data: Object.entries(valueMap).map(([name, value]) => ({
+                                    name,
+                                    value
+                                }))
+                            };
+                        });
+                        
+                        // 从本地存储加载图表配置
+                        const savedConfig = localStorage.getItem(CHART_CONFIG_KEY);
+                        const baseOption = {
+                            title: {
+                                text: '物业数据统计',
+                                left: 'center'
+                            },
+                            tooltip: {
+                                trigger: 'item',
+                                formatter: '{a} <br/>{b}: {c} ({d}%)'
+                            },
+                            legend: {
+                                orient: 'vertical',
+                                left: 10,
+                                data: series.map(s => s.name)
+                            },
+                            toolbox: {
+                                feature: {
+                                    dataView: { show: true, readOnly: false },
+                                    magicType: { 
+                                        show: true, 
+                                        type: ['pie', 'funnel'] 
+                                    },
+                                    restore: { show: true },
+                                    saveAsImage: { show: true }
+                                }
+                            }
+                        };
+                        
+                        // 合并保存的配置
+                        const option = savedConfig 
+                            ? { ...baseOption, ...JSON.parse(savedConfig) }
+                            : baseOption;
+                        
+                        // 添加系列配置
+                        option.series = series.map(s => ({
+                            name: s.name,
+                            type: 'pie',
+                            radius: ['40%', '70%'],
+                            avoidLabelOverlap: false,
+                            itemStyle: {
+                                borderRadius: 10,
+                                borderColor: '#fff',
+                                borderWidth: 2
+                            },
+                            label: {
+                                show: true,
+                                formatter: '{b}: {c} ({d}%)'
+                            },
+                            emphasis: {
+                                label: {
+                                    show: true,
+                                    fontSize: '18',
+                                    fontWeight: 'bold'
+                                }
+                            },
+                            labelLine: {
+                                show: true
+                            },
+                            data: s.data
+                        }));
+                        
+                        // 保存配置变更
+                        myChart.on('restore', function() {
+                            localStorage.setItem(CHART_CONFIG_KEY, JSON.stringify(option));
+                        });
+                        
+                        myChart.hideLoading();
+                        myChart.setOption(option);
+                        
+                        // 响应式调整 - 添加防抖
+                        const resizeHandler = debounce(function() {
+                            myChart.resize();
+                        }, 300);
+                        window.addEventListener('resize', resizeHandler);
+                        
+                        // 保存配置到本地存储
+                        localStorage.setItem(CHART_CONFIG_KEY, JSON.stringify(option));
+                    })
+                    .catch(error => {
+                        console.error('加载数据失败:', error);
+                        myChart.hideLoading();
+                        myChart.setOption({
+                            title: {
+                                text: '数据加载失败',
+                                subtext: error.message,
+                                left: 'center',
+                                top: 'center'
+                            }
+                        });
+                    });
+            }
+            
+            // 延迟初始化以确保DOM完全加载
+            setTimeout(initChart, 100);
+        });
+    </script>
 
     <script>
     const App = {
